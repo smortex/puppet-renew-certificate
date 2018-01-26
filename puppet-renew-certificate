@@ -1,0 +1,107 @@
+#!/usr/bin/env ruby
+
+require 'action_view'
+require 'openssl'
+
+class DateFormatter
+  include ActionView::Helpers::DateHelper
+
+  def initialize(date)
+    @date = date
+  end
+
+  def to_s
+    s = distance_of_time_in_words_to_now(@date)
+    if @date < Time.now
+      "#{@date} (#{s} ago)"
+    else
+      colorize("#{@date} (in #{s})")
+    end
+  end
+
+  def colorize(s)
+    day = 3600 * 24
+
+    if Time.now + 30 * day > @date
+      "\033[31;1m#{s}\033[0m"
+    elsif Time.now + 365 * day > @date
+      "\033[33;1m#{s}\033[0m"
+    else
+      s
+    end
+  end
+end
+
+class CASerial
+  def initialize(filename)
+    @filename = filename
+  end
+
+  def next
+    res = serial = read
+    serial += 1
+    write(serial)
+
+    res
+  end
+
+  private
+
+  def read
+    Integer(File.read(@filename), 16)
+  end
+
+  def write(value)
+    File.write(@filename, format('%04x', value))
+  end
+end
+
+ssldir = '/var/puppet/ssl'
+
+serial = CASerial.new("#{ssldir}/ca/serial")
+
+ca_key = OpenSSL::PKey::RSA.new(File.read("#{ssldir}/ca/ca_key.pem"))
+
+todo_actions = []
+
+ARGV.each do |filename|
+  if filename =~ %r{^#{ssldir}/certs}
+    puts "Ignoring #{filename} (certificate used by the puppet agent)"
+    next
+  end
+
+  puts "Processing #{filename}..."
+  cert = OpenSSL::X509::Certificate.new(File.read(filename))
+
+  cn = cert.subject.to_a.select { |entry| entry[0] == 'CN' }.map { |entry| entry[1] }[0]
+
+  puts
+  puts "      Serial: #{cert.serial}"
+  puts "     Subject: #{cert.subject}"
+  puts "  Not Before: #{DateFormatter.new(cert.not_before)}"
+  puts "   Not After: #{DateFormatter.new(cert.not_after)}"
+  puts
+
+  print 'Renew certificate [yN] '
+  r = $stdin.gets
+  next unless r =~ /^[yY]/
+
+  cert.serial = serial.next
+  cert.not_after += 3600 * 24 * 365 * 5
+  cert.sign(ca_key, OpenSSL::Digest::SHA256.new)
+  File.write(filename, cert.to_s)
+
+  todo_actions << if filename =~ %r{/ca/ca_crt.pem$}
+                    'Remove "${ssldir}/certs/ca.pem" on all nodes'
+                  else
+                    "Remove \"${ssldir}/certs/#{cn}.pem\" on node #{cn}"
+                  end
+end
+
+unless todo_actions.empty?
+  puts
+  puts 'The following actions must be done:'
+  todo_actions.each do |action|
+    puts "  - #{action}"
+  end
+end

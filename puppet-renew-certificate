@@ -56,7 +56,11 @@ class CASerial
   end
 end
 
-ssldir = '/var/puppet/ssl'
+
+ssldir = [
+  '/etc/puppetlabs/puppet/ssl',
+  '/var/puppet/ssl',
+].select { |dir| File.directory?(dir) }.first
 
 serial = CASerial.new("#{ssldir}/ca/serial")
 

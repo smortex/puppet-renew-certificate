@@ -68,6 +68,15 @@ ca_key = OpenSSL::PKey::RSA.new(File.read("#{ssldir}/ca/ca_key.pem"))
 
 todo_actions = []
 
+if ARGV.empty?
+  $stderr.puts <<~EOT
+    usage: #{$0} certificate...
+
+    #{$0} #{ssldir}/ca/ca_crt.pem #{ssldir}/ca/signed/*.pem
+  EOT
+  exit 1
+end
+
 ARGV.each do |filename|
   if filename =~ %r{^#{ssldir}/certs}
     puts "Ignoring #{filename} (certificate used by the puppet agent)"

@@ -116,6 +116,34 @@ ARGV.each do |filename|
 
   cert.serial = serial.next
   cert.not_after += 3600 * 24 * 365 * 5
+
+  if cert.extensions.any? { |extension| extension.oid == 'authorityKeyIdentifier' && extension.value =~ /serial:/ }
+    # Legacy Authority Key Identifier needs update.
+    #
+    # This extension can be of the form "keyid:<hash>" or
+    # "<identifier>:<subject>\nserial:<serial>\n", the later features the
+    # serial which has to be changed each time, so prefer the former which
+    # match what is recommanded in RFC5280 section 4.2.1.1.
+
+    ef = OpenSSL::X509::ExtensionFactory.new
+    ef.subject_certificate = cert
+    ef.issuer_certificate = cert
+
+    # We can't just remove / update an extension, so make a copy and recreate
+    # them from scratch.
+    extensions = cert.extensions.dup
+    cert.extensions = []
+
+    extensions.each do |extension|
+      if extension.oid == 'authorityKeyIdentifier'
+        # Ruby will automagically compute and add the missing ":<hash>" part.
+        cert.add_extension(ef.create_extension('authorityKeyIdentifier', 'keyid', false))
+      else
+        cert.add_extension(extension)
+      end
+    end
+  end
+
   cert.sign(ca_key, OpenSSL::Digest::SHA256.new)
   File.write(filename, cert.to_s)
 

@@ -2,6 +2,7 @@
 
 require 'action_view'
 require 'openssl'
+require 'optparse'
 
 class DateFormatter
   include ActionView::Helpers::DateHelper
@@ -56,15 +57,27 @@ class CASerial
   end
 end
 
+options = {
+  ssldir: ['/etc/puppetlabs/puppet/ssl', '/var/puppet/ssl'].filter { |dir| File.directory?(dir) }.first,
+  yes: false
+}
 
-ssldir = [
-  '/etc/puppetlabs/puppet/ssl',
-  '/var/puppet/ssl',
-].select { |dir| File.directory?(dir) }.first
+OptionParser.new do |opts|
+  opts.on('--ssldir PATH', 'Path to Puppet ssl directory') do |dir|
+    options[:ssldir] = dir
+  end
+  opts.on('--yes', 'Assume yes to all questions') do
+    options[:yes] = true
+  end
+end.parse!
 
-serial = CASerial.new("#{ssldir}/ca/serial")
+serial = CASerial.new("#{options[:ssldir]}/ca/serial")
 
-ca_key = OpenSSL::PKey::RSA.new(File.read("#{ssldir}/ca/ca_key.pem"))
+puts "#{options[:ssldir]}/ca/serial"
+puts `pwd`
+
+
+ca_key = OpenSSL::PKey::RSA.new(File.read("#{options[:ssldir]}/ca/ca_key.pem"))
 
 todo_actions = []
 
@@ -72,13 +85,13 @@ if ARGV.empty?
   $stderr.puts <<~EOT
     usage: #{$0} certificate...
 
-    #{$0} #{ssldir}/ca/ca_crt.pem #{ssldir}/ca/signed/*.pem
+    #{$0} #{options[:ssldir]}/ca/ca_crt.pem #{options[:ssldir]}/ca/signed/*.pem
   EOT
   exit 1
 end
 
 ARGV.each do |filename|
-  if filename =~ %r{^#{ssldir}/certs}
+  if filename =~ %r{^#{options[:ssldir]}/certs}
     puts "Ignoring #{filename} (certificate used by the puppet agent)"
     next
   end
@@ -95,9 +108,11 @@ ARGV.each do |filename|
   puts "   Not After: #{DateFormatter.new(cert.not_after)}"
   puts
 
-  print 'Renew certificate [yN] '
-  r = $stdin.gets
-  next unless r =~ /^[yY]/
+  unless options[:yes]
+    print 'Renew certificate [yN] '
+    r = $stdin.gets
+    next unless r =~ /^[yY]/
+  end
 
   cert.serial = serial.next
   cert.not_after += 3600 * 24 * 365 * 5

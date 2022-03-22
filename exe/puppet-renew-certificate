@@ -59,7 +59,7 @@ class CASerial
 end
 
 options = {
-  ssldir: ['/etc/puppetlabs/puppet/ssl', '/var/puppet/ssl'].filter { |dir| File.directory?(dir) }.first,
+  ssldir: ['/etc/puppetlabs/puppet/ssl', '/var/puppet/ssl'].select { |dir| File.directory?(dir) }.first,
   yes: false
 }
 

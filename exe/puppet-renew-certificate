@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
 
 require 'action_view'
 require 'openssl'
@@ -20,15 +21,15 @@ class DateFormatter
     end
   end
 
-  def colorize(s)
+  def colorize(subject)
     day = 3600 * 24
 
-    if Time.now + 30 * day > @date
-      "\033[31;1m#{s}\033[0m"
-    elsif Time.now + 365 * day > @date
-      "\033[33;1m#{s}\033[0m"
+    if Time.now + (30 * day) > @date
+      "\033[31;1m#{subject}\033[0m"
+    elsif Time.now + (365 * day) > @date
+      "\033[33;1m#{subject}\033[0m"
     else
-      s
+      subject
     end
   end
 end
@@ -76,17 +77,16 @@ serial = CASerial.new("#{options[:ssldir]}/ca/serial")
 puts "#{options[:ssldir]}/ca/serial"
 puts `pwd`
 
-
 ca_key = OpenSSL::PKey::RSA.new(File.read("#{options[:ssldir]}/ca/ca_key.pem"))
 
 todo_actions = []
 
 if ARGV.empty?
-  $stderr.puts <<~EOT
-    usage: #{$0} certificate...
+  warn <<~USAGE
+    usage: #{$PROGRAM_NAME} certificate...
 
-    #{$0} #{options[:ssldir]}/ca/ca_crt.pem #{options[:ssldir]}/ca/signed/*.pem
-  EOT
+    #{$PROGRAM_NAME} #{options[:ssldir]}/ca/ca_crt.pem #{options[:ssldir]}/ca/signed/*.pem
+  USAGE
   exit 1
 end
 
@@ -144,7 +144,7 @@ ARGV.each do |filename|
     end
   end
 
-  cert.sign(ca_key, OpenSSL::Digest::SHA256.new)
+  cert.sign(ca_key, OpenSSL::Digest.new('SHA256'))
   File.write(filename, cert.to_s)
 
   todo_actions << if filename =~ %r{/ca/ca_crt.pem$}

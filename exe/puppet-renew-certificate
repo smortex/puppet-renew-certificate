@@ -74,9 +74,6 @@ end.parse!
 
 serial = CASerial.new("#{options[:ssldir]}/ca/serial")
 
-puts "#{options[:ssldir]}/ca/serial"
-puts `pwd`
-
 ca_key = OpenSSL::PKey::RSA.new(File.read("#{options[:ssldir]}/ca/ca_key.pem"))
 
 todo_actions = []

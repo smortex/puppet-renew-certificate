@@ -6,10 +6,11 @@ Tool to renew Puppet CA and client certificates.
 
 Clone the repository and renew CA and client certificates:
 
-```
+```sh-session
 user@puppetserver ~ $ git clone https://github.com/smortex/puppet-renew-certificate.git
-user@puppetserver ~ $ bundle install
-user@puppetserver ~ $ sudo bundle exec exe/puppet-renew-certificate /etc/puppetlabs/puppet/ssl/ca/ca_crt.pem /etc/puppetlabs/puppet/ssl/ca/signed/*.pem
+user@puppetserver ~ $ cd puppet-renew-certificate
+user@puppetserver ~/puppet-renew-certificate $ bundle install
+user@puppetserver ~/puppet-renew-certificate $ sudo bundle exec exe/puppet-renew-certificate /etc/puppetlabs/puppet/ssl/ca/ca_crt.pem /etc/puppetlabs/puppet/ssl/ca/signed/*.pem
 ```
 
 After renewal, remove the old certificates from the nodes:

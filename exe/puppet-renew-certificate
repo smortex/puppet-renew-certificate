@@ -8,17 +8,19 @@ require 'optparse'
 class DateFormatter
   include ActionView::Helpers::DateHelper
 
-  def initialize(date)
+  def initialize(date, colorize: false)
     @date = date
+    @colorize = colorize
   end
 
   def to_s
     s = distance_of_time_in_words_to_now(@date)
-    if @date < Time.now
-      "#{@date} (#{s} ago)"
-    else
-      colorize("#{@date} (in #{s})")
-    end
+    t = if @date < Time.now
+          "#{@date} (#{s} ago)"
+        else
+          "#{@date} (in #{s})"
+        end
+    @colorize ? colorize(t) : t
   end
 
   def colorize(subject)
@@ -105,8 +107,8 @@ ARGV.each do |filename|
   puts
   puts "      Serial: #{cert.serial}"
   puts "     Subject: #{cert.subject}"
-  puts "  Not Before: #{DateFormatter.new(cert.not_before)}"
-  puts "   Not After: #{DateFormatter.new(cert.not_after)}"
+  puts "  Not Before: #{DateFormatter.new(cert.not_before, colorize: false)}"
+  puts "   Not After: #{DateFormatter.new(cert.not_after, colorize: true)}"
   puts
 
   unless options[:yes]
